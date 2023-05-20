@@ -48,12 +48,12 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const Manager = await hre.ethers.getContractFactory("Manager");
-  const manager = await Manager.deploy();
+  const NuttzToken = await hre.ethers.getContractFactory("NuttzToken");
+  const Contract = await NuttzToken.deploy();
 
-  await manager.deployed();
+  await Contract.deployed();
 
-  console.log("Manager deployed to:", manager.address);
+  console.log("NutzzToken contract is deployed to:", Contract.address);
 }
  
 // We recommend this pattern to be able to use async/await everywhere
