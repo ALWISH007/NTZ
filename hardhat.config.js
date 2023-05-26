@@ -4,7 +4,7 @@ require("@nomicfoundation/hardhat-toolbox");
 //const ALCHEMY_API_KEY = "KEY";
 //const SEPOLIA_PRIVATE_KEY = "YOUR SEPOLIA PRIVATE KEY";
 module.exports = {
-  solidity: "0.8.0",
+  solidity: "0.8.19",
   /*
   networks: {
     sepolia: {
