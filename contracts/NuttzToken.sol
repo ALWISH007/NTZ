@@ -17,22 +17,24 @@ interface IERC20 {
 
 contract NUTTZ is IERC20 {
 
-    mapping(address => uint256) private balances;
-    mapping(address => mapping(address => uint256)) private allowances;
+    mapping(address => uint256) private _balances;
+    mapping(address => mapping(address => uint256)) private _allowances;
     
     uint256 private _totalSupply;
     string private _name;
     string private _symbol;
     uint256 private _decimals;
     uint256 private _taxPercentage;
+    address private _stakeContract;
 
-    constructor (string memory name, string memory symbol, uint256  decimals,uint256 amount,uint256 taxPercentage) {
+    constructor (string memory name, string memory symbol, uint256  decimals,uint256 amount,uint256 taxPercentage,address stakeContract) {
         _name = name;
         _symbol = symbol;
-        _decimals = decimals;
+        _decimals = decimals;//
         _taxPercentage=taxPercentage;
         _totalSupply+=amount;
-        balances[msg.sender]+=amount;
+        _stakeContract=stakeContract;
+        _balances[msg.sender]+=amount;
     }
 
     function Name() public view returns (string memory){
@@ -50,31 +52,36 @@ contract NUTTZ is IERC20 {
     function TaxPercentage() public view returns (uint256){
         return _taxPercentage;
     }
-
+    
+    function StakeContract() public view returns (address){
+        return _stakeContract;
+    }
+    
     function TotalSupply() external view override returns (uint256){
         return _totalSupply;
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        return balances[account];
+        return _balances[account];
     }
 
     function transfer(address recipient, uint256 amount) public virtual override returns(bool) {
+        _totalSupply-=_taxFee(amount);//burn
+        _balances[_stakeContract]+=_taxFee(amount);//
         _transfer(msg.sender,recipient, amount-_taxFee(amount));
         return true;
-
     }
 
     function _transfer(address from, address to,uint256 amount) internal virtual {
-        require(to != address(0),"Receiver can not be a  zero address");
-        require(balanceOf(from) >= amount,"Amount must be less than caller's account balance");
-        balances[from] -=amount;
-        balances[to] +=amount;
+        require(to != address(0),"Receiver can not be a  zero address");//
+        require(balanceOf(from) >= amount,"Amount must be less than caller's account balance");//
+        _balances[from] -=amount;
+        _balances[to] +=amount;
         emit Transfer(from,to,amount);
     }
     //The allowance function allows anyone to check any allowance
     function Allowance(address owner,address spender) public view virtual override returns(uint256){
-        return allowances[owner][spender];
+        return _allowances[owner][spender];
     } 
     
     function Approve(address spender, uint256 amount) public virtual override  returns (bool){
@@ -83,8 +90,8 @@ contract NUTTZ is IERC20 {
     }
 
     function _approve(address owner, address spender, uint256 amount) internal virtual {
-        require(spender != address(0),"Spender can not be a zero address");
-        allowances[owner][spender] = amount;
+        require(spender != address(0),"Spender can not be a zero address");//
+        _allowances[owner][spender] = amount;
         emit Approval(owner,spender,amount);
     }
 
@@ -93,10 +100,38 @@ contract NUTTZ is IERC20 {
     }
 
     function TransferFrom( address from, address to, uint256 amount) external override returns(bool){
-        require(allowances[from][msg.sender] >= amount,"Caller is not allowed to transfer the amount from owner to receiver");
+        require(_allowances[from][msg.sender] >= amount,"Caller is not allowed to transfer the amount from owner to receiver");//
+        _totalSupply-=_taxFee(amount);
+        _balances[_stakeContract]+=_taxFee(amount);//
         _transfer(from, to, amount-_taxFee(amount));
-        _approve(from,msg.sender,allowances[from][msg.sender]-amount);
+        _approve(from,msg.sender,_allowances[from][msg.sender]-amount);
         return true;
+    }
+
+    function mint(address account,uint256 amount) external virtual returns(bool){
+        _balances[_stakeContract]+=_taxFee(amount);//@TODO 
+        _mint(account,amount-_taxFee(amount));
+        return true;
+    }
+
+    function _mint(address account,uint256 amount) internal virtual {
+        require(account != address(0),"ERC20: Mint to the zero address");
+        _totalSupply+=amount;
+        _balances[account]+=amount;
+        emit Transfer(address(0),account,amount);
+    }
+
+    function burn(address account,uint256 amount) external virtual returns(bool){
+        _burn(account,amount);
+        return true;
+    }
+
+    function _burn(address account, uint256 amount) internal virtual {
+        require(account != address(0),"ERC20: Burn from the zero address");
+        require(balanceOf(account) >= amount, "Burn amount exceeds account balance");//
+        _totalSupply-=amount;
+        _balances[account]-=amount;
+        emit Transfer(account,address(0),amount);
     }
 
 }
