@@ -24,11 +24,13 @@ contract NUTTZ is IERC20 {
     string private _name;
     string private _symbol;
     uint256 private _decimals;
+    uint256 private _taxPercentage;
 
-    constructor (string memory name, string memory symbol, uint256  decimals,uint256 amount) {
+    constructor (string memory name, string memory symbol, uint256  decimals,uint256 amount,uint256 taxPercentage) {
         _name = name;
         _symbol = symbol;
         _decimals = decimals;
+        _taxPercentage=taxPercentage;
         _totalSupply+=amount;
         balances[msg.sender]+=amount;
     }
@@ -45,6 +47,10 @@ contract NUTTZ is IERC20 {
         return _decimals;
     }
 
+    function TaxPercentage() public view returns (uint256){
+        return _taxPercentage;
+    }
+
     function TotalSupply() external view override returns (uint256){
         return _totalSupply;
     }
@@ -54,10 +60,11 @@ contract NUTTZ is IERC20 {
     }
 
     function transfer(address recipient, uint256 amount) public virtual override returns(bool) {
-        _transfer(msg.sender,recipient, amount);
+        _transfer(msg.sender,recipient, amount-_taxFee(amount));
         return true;
 
     }
+
     function _transfer(address from, address to,uint256 amount) internal virtual {
         require(to != address(0),"Receiver can not be a  zero address");
         require(balanceOf(from) >= amount,"Amount must be less than caller's account balance");
@@ -81,9 +88,13 @@ contract NUTTZ is IERC20 {
         emit Approval(owner,spender,amount);
     }
 
+    function _taxFee(uint256 taxableAmount) internal view returns(uint256) {
+        return (taxableAmount*_taxPercentage)/100;
+    }
+
     function TransferFrom( address from, address to, uint256 amount) external override returns(bool){
         require(allowances[from][msg.sender] >= amount,"Caller is not allowed to transfer the amount from owner to receiver");
-        _transfer(from, to, amount);
+        _transfer(from, to, amount-_taxFee(amount));
         _approve(from,msg.sender,allowances[from][msg.sender]-amount);
         return true;
     }
